@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @RestController
 public class ProductController {
     @Autowired
@@ -29,7 +30,14 @@ public class ProductController {
 
     @GetMapping("/products")
     public ResponseEntity<List<ProductModel>> getAllProducts(){
-        return ResponseEntity.status(HttpStatus.OK).body(productRepository.findAll());
+        List<ProductModel> productModelList = productRepository.findAll();
+        if (!productModelList.isEmpty()){
+            for (ProductModel product : productModelList) {
+                UUID id = product.getIdProduct();
+                product.add(linkTo(methodOn(ProductController.class).getProduct(id)).withSelfRel());
+            }
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(productModelList);
     }
 
     @GetMapping("/products/{id}")
@@ -38,6 +46,7 @@ public class ProductController {
         if (productModelOptional.isEmpty()){
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found.");
         }
+        productModelOptional.get().add(linkTo(methodOn(ProductController.class).getProduct(id)).withSelfRel());
         return ResponseEntity.status(HttpStatus.OK).body(productModelOptional.get());
     }
     @PutMapping("/products/{id}")
